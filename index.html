@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <link rel="manifest" href="manifest.json">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kontrol Bluetooth HC-05</title>
+  <style>
+   
+    body {
+      font-family: 'Roboto', Arial, sans-serif;
+      background: linear-gradient(120deg, #3498db, #2ecc71);
+      color: white;
+      text-align: center;
+      padding: 20px;
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 20px;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    button {
+      padding: 15px 30px;
+      margin: 10px;
+      font-size: 18px;
+      font-weight: bold;
+      color: white;
+      border: none;
+      border-radius: 25px;
+      background: linear-gradient(45deg, #e74c3c, #c0392b);
+      cursor: pointer;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+      transition: all 0.3s ease;
+    }
+
+    button:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+      background: linear-gradient(45deg, #c0392b, #e74c3c);
+    }
+
+    button:disabled {
+      background: gray;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    #status, #voice-status {
+      margin-top: 20px;
+      font-weight: bold;
+      font-size: 1.2rem;
+      text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+    }
+
+    #voice-status {
+      font-size: 1rem;
+      color: #f1c40f;
+    }
+
+
+    body {
+      animation: fadeIn 1.5s ease-in-out;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>Remot Kontrol Bluetooth</h1>
+  <button id="connect-btn">Hubungkan ke Bluetooth</button>
+  <button id="on-btn" disabled>Nyalakan</button>
+  <button id="off-btn" disabled>Matikan</button>
+  <button id="voice-btn">Mulai Suara</button>
+  <div id="status">Status: Tidak Terhubung</div>
+  <div id="voice-status">Suara: Tidak Aktif</div>
+
+  <script>
+    let isConnected = false;
+
+   
+    const connectBtn = document.getElementById('connect-btn');
+    const onBtn = document.getElementById('on-btn');
+    const offBtn = document.getElementById('off-btn');
+    const voiceBtn = document.getElementById('voice-btn');
+    const statusDiv = document.getElementById('status');
+    const voiceStatusDiv = document.getElementById('voice-status');
+
+    
+    connectBtn.addEventListener('click', async () => {
+      try {
+        
+        statusDiv.textContent = 'Status: Menghubungkan...';
+        console.log('Menghubungkan ke HC-05...');
+
+        setTimeout(() => {
+          isConnected = true;
+          statusDiv.textContent = 'Status: Terhubung ke HC-05';
+
+          
+          onBtn.disabled = false;
+          offBtn.disabled = false;
+
+          
+          new Notification('Bluetooth Terhubung', {
+            body: 'Berhasil terhubung ke Bluetooth',
+            icon: 'icon.png' 
+          });
+        }, 4000); 
+      } catch (error) {
+        console.error('Koneksi gagal:', error);
+        statusDiv.textContent = 'Status: Koneksi gagal. Lihat konsol untuk detail.';
+      }
+    });
+
+   
+    onBtn.addEventListener('click', () => {
+      if (isConnected) {
+        sendBluetoothCommand('ON');
+      } else {
+        statusDiv.textContent = 'Status: Tidak terhubung ke perangkat';
+      }
+    });
+
+  
+    offBtn.addEventListener('click', () => {
+      if (isConnected) {
+        sendBluetoothCommand('OFF');
+      } else {
+        statusDiv.textContent = 'Status: Tidak terhubung ke perangkat';
+      }
+    });
+
+   
+    voiceBtn.addEventListener('click', () => {
+      if (isConnected) {
+        recognition.start();
+        voiceStatusDiv.textContent = 'Suara: Mendengarkan...';
+      } else {
+        voiceStatusDiv.textContent = 'Suara: Tidak terhubung ke perangkat';
+      }
+    });
+
+    function sendBluetoothCommand(command) {
+      console.log('Perintah Dikirim:', command);
+      statusDiv.textContent = `Status: Perintah "${command}" Dikirim`;
+    }
+
+    
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'id-ID'; 
+    recognition.continuous = false;
+
+    recognition.onresult = (event) => {
+      const command = event.results[0][0].transcript.toLowerCase();
+      console.log('Perintah Suara:', command);
+
+      if (command.includes('nyalakan')) {
+        sendBluetoothCommand('ON');
+        statusDiv.textContent = 'Status: Perintah "ON" Dikirim';
+      } else if (command.includes('matikan')) {
+        sendBluetoothCommand('OFF');
+        statusDiv.textContent = 'Status: Perintah "OFF" Dikirim';
+      } else {
+        statusDiv.textContent = 'Status: Perintah Tidak Dikenali';
+      }
+
+      voiceStatusDiv.textContent = 'Suara: Tidak Aktif';
+    };
+
+    recognition.onerror = (event) => {
+      console.error('Kesalahan Pengenalan Suara:', event.error);
+      voiceStatusDiv.textContent = 'Suara: Kesalahan, Coba Lagi';
+    };
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./service-worker.js')
+        .then((registration) => {
+          console.log('Service Worker terdaftar:', registration);
+        })
+        .catch((error) => {
+          console.error('Pendaftaran Service Worker gagal:', error);
+        });
+    }
+  </script>
+</body>
+</html>
